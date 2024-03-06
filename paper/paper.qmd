@@ -19,18 +19,16 @@ bibliography: references.bib
 #| message: false
 
 library(boot)
-library(broom.mixed)
 library(collapse)
-library(dataverse)
 library(gutenbergr)
 library(janitor)
 library(knitr)
-library(marginaleffects)
 library(modelsummary)
 library(rstanarm)
-library(tidybayes)
 library(tidyverse)
 library(palmerpenguins)
+library(arrow)
+
 ```
 
 
@@ -46,39 +44,33 @@ The remainder of this paper is structured as follows. @sec-data....
 
 Some of our data is of penguins (@fig-bills), from @palmerpenguins.
 
-```{r}
-#| label: fig-bills
-#| fig-cap: Bills of penguins
-#| echo: false
-
-ggplot(penguins, aes(x = island, fill = species)) +
-  geom_bar(alpha = 0.8) +
-  scale_fill_manual(values = c("darkorange","purple","cyan4"),
-                    guide = "none") +
-  theme_minimal() +
-  facet_wrap(~species, ncol = 1) +
-  coord_flip()
-```
 
 Talk more about it.
 
 And also planes (@fig-planes). (You can change the height and width, but don't worry about doing that until you have finished every other aspect of the paper - Quarto will try to make it look nice and the defaults usually work well once you have enough text.)
 
 ```{r}
-#| label: fig-planes
-#| fig-cap: Relationship between wing length and width
+#| label: fig-1
+#| fig-cap: Voting among demographics
 #| echo: false
 #| warning: false
 #| message: false
 
-analysis_data <- read_csv(here::here("data/analysis_data/analysis_data.csv"))
+ces2020 <- read_parquet(here::here("data/analysis_data/cleaned_ces2020.parquet"))
 
-analysis_data |> 
-  ggplot(aes(x = width, y = length)) +
-  geom_point(alpha = 0.8) +
+ces2020 |>
+  ggplot(aes(x = education, fill = voted_for)) +
+  stat_count(position = "dodge") +
+  facet_wrap(facets = vars(gender)) +
   theme_minimal() +
-  labs(x = "Wing width (mm)",
-       y = "Wing length (mm)")
+  labs(
+    x = "Highest education",
+    y = "Number of respondents",
+    fill = "Voted for"
+  ) +
+  coord_flip() +
+  scale_fill_brewer(palette = "Set1") +
+  theme(legend.position = "bottom")
 ```
 
 Talk way more about it. 
@@ -98,9 +90,9 @@ Define $y_i$ as the number of seconds that the plane remained aloft. Then $\beta
 \begin{align} 
 y_i|\pi_i, \sigma &\sim \mbox{Bern}(\pi_i) \\
 \mbox{logit}(\pi_i) &= \beta_0 + \beta_1 \times \mbox{gender}_i + \beta_2 \times \mbox{education}_i\\
-\beta_0 &\sim \mbox{Normal}(0, 2.5) \\
-\beta_1 &\sim \mbox{Normal}(0, 2.5) \\
-\beta_2 &\sim \mbox{Normal}(0, 2.5) \\
+\beta_0 &\sim \mbox{Normal}(0, 5.02) \\
+\beta_1 &\sim \mbox{Normal}(0, 6.04) \\
+\beta_2 &\sim \mbox{Normal}(0, 6.15) \\
 \end{align}
 
 We run the model in R [@citeR] using the `rstanarm` package of @rstanarm. We use the default priors from `rstanarm`.
@@ -118,28 +110,19 @@ We can use maths by including latex between dollar signs, for instance $\theta$.
 Our results are summarized in @tbl-modelresults.
 
 ```{r}
-#| echo: false
-#| eval: true
 #| warning: false
-#| message: false
-
-library(rstanarm)
-
-first_model <-
-  readRDS(file = here::here("models/first_model.rds"))
-```
-
-```{r}
 #| echo: false
 #| eval: true
 #| label: tbl-modelresults
 #| tbl-cap: "Explanatory models of flight time based on wing width and wing length"
-#| warning: false
+
+library(rstanarm)
+
+first_model <-
+  readRDS(file = here::here("models/reduced_voting_model.rds"))
 
 modelsummary::modelsummary(
-  list(
-    "First model" = first_model
-  ),
+  first_model,
   statistic = "mad",
   fmt = 2
 )
@@ -188,6 +171,10 @@ In @fig-ppcheckandposteriorvsprior-2 we compare the posterior with the prior. Th
 #| layout-ncol: 2
 #| fig-cap: "Examining how the model fits, and is affected by, the data"
 #| fig-subcap: ["Posterior prediction check", "Comparing the posterior with the prior"]
+ces2020_reduced <- 
+  ces2020 |> 
+  slice_sample(n = 1000)
+
 
 pp_check(first_model) +
   theme_classic() +
