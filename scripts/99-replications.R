@@ -9,8 +9,18 @@
 
 
 #### Workspace setup ####
+library(boot)
+library(broom.mixed)
+library(collapse)
+library(dataverse)
+library(gutenbergr)
+library(janitor)
+library(knitr)
+library(marginaleffects)
+library(modelsummary)
+library(rstanarm)
+library(tidybayes)
 library(tidyverse)
-# [...UPDATE THIS...]
 
 #### Load data ####
 # [...ADD CODE HERE...]
